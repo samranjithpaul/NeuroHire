@@ -51,7 +51,7 @@ ollama pull llama3.1
 
 4. Run the app
 ```bash
-python app.py
+python screening_tool.py
 ```
 Access at `http://localhost:5000`
 
