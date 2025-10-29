@@ -19,13 +19,13 @@ It uses local large language models (via Ollama) instead of external APIs — me
 | Backend | Python (Flask) |
 | AI/ML | Ollama (LLaMA 3.1), NLP |
 | Data Handling | pdfplumber, CSV |
-| Deployment | Localhost / ngrok / Docker |
+| Deployment | Localhost / ngrok |
 
 ## Installation
 
 1. Clone the repository
 ```bash
-git clone https://github.com/yourusername/NeuroHire.git
+git clone https://github.com/samranjithpaul/NeuroHire.git
 cd NeuroHire
 ```
 
