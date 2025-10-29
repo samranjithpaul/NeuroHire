@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resume Screening Assistant</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes typing {
+      from { width: 0 }
+      to { width: 100% }
+    }
+
+    @keyframes blink {
+      50% { border-color: transparent }
+    }
+
+    .typing {
+      display: inline-block;
+      white-space: nowrap;
+      overflow: hidden;
+      border-right: 3px solid #22d3ee;
+      animation: typing 2s steps(40, end), blink .75s step-end infinite;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 1; filter: drop-shadow(0 0 10px #22d3ee); }
+      50% { opacity: 0.6; filter: drop-shadow(0 0 20px #38bdf8); }
+    }
+
+    .pulse-glow {
+      animation: pulseGlow 1.5s infinite;
+    }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-100 flex flex-col items-center min-h-screen p-6">
+  <h1 class="text-4xl font-bold mb-8 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent pulse-glow">
+    Resume Screening Assistant
+  </h1>
+
+  <form id="uploadForm" class="bg-gray-900/60 backdrop-blur-xl border border-gray-800 rounded-2xl p-8 w-full max-w-3xl space-y-6 shadow-xl">
+    <div>
+      <label class="block mb-2 font-medium">Upload Resumes (PDF)</label>
+      <input type="file" name="file[]" multiple required accept=".pdf"
+             class="block w-full text-sm text-gray-300 bg-gray-800 border border-gray-700 rounded-lg cursor-pointer focus:outline-none">
+    </div>
+
+    <div>
+      <label class="block mb-2 font-medium">Job Description</label>
+      <textarea name="job_description" required
+                class="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-cyan-400 focus:outline-none"
+                rows="3"></textarea>
+    </div>
+
+    <div>
+      <label class="block mb-2 font-medium">Mandatory Keywords</label>
+      <input type="text" name="mandatory_keywords" required
+             class="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-cyan-400 focus:outline-none"
+             placeholder="e.g. Python, React, SQL">
+    </div>
+
+    <button type="submit"
+            class="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold py-3 rounded-lg transition">
+      Analyze Resumes
+    </button>
+  </form>
+
+  <!-- Loading animation -->
+  <div id="loading" class="hidden mt-8 flex flex-col items-center">
+    <div class="relative w-8 h-8 mb-3">
+      <div class="absolute inset-0 rounded-full border-4 border-cyan-400 border-t-transparent animate-spin"></div>
+    </div>
+    <p class="text-cyan-400 animate-pulse">Analyzing resumes... please wait</p>
+  </div>
+
+  <!-- Results -->
+  <div id="results" class="mt-12 w-full max-w-5xl hidden">
+    <h2 class="text-2xl font-semibold mb-4">Results</h2>
+    <div class="overflow-x-auto rounded-lg border border-gray-800">
+      <table class="w-full text-left border-collapse">
+        <thead class="bg-gray-800 text-gray-300">
+          <tr>
+            <th class="py-3 px-4">Resume</th>
+            <th class="py-3 px-4">Comments</th>
+            <th class="py-3 px-4">Suitability</th>
+          </tr>
+        </thead>
+        <tbody id="resultsBody" class="bg-gray-900"></tbody>
+      </table>
+    </div>
+    <a href="/download_csv"
+       class="inline-block mt-6 bg-cyan-500 hover:bg-cyan-400 text-black font-semibold py-2 px-6 rounded-lg transition">
+      Download CSV
+    </a>
+  </div>
+
+  <script>
+    const form = document.getElementById("uploadForm");
+    const resultsDiv = document.getElementById("results");
+    const resultsBody = document.getElementById("resultsBody");
+    const loading = document.getElementById("loading");
+
+    // Typewriter animation for comments
+    async function typeWriterEffect(element, text, speed = 20) {
+      for (let i = 0; i < text.length; i++) {
+        element.innerHTML += text.charAt(i);
+        await new Promise(r => setTimeout(r, speed));
+      }
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      loading.classList.remove("hidden");
+      resultsDiv.classList.add("hidden");
+      resultsBody.innerHTML = "";
+
+      const formData = new FormData(form);
+      const response = await fetch("/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      loading.classList.add("hidden");
+
+      if (!response.ok) {
+        alert("Error: " + (await response.text()));
+        return;
+      }
+
+      const data = await response.json();
+      const results = data.results;
+
+      for (const [name, comments, suitability] of results) {
+        const badgeColor =
+          suitability === "Suitable"
+            ? "bg-green-600"
+            : suitability === "Maybe Suitable"
+            ? "bg-yellow-600"
+            : "bg-red-600";
+
+        const row = document.createElement("tr");
+        row.className = "border-t border-gray-800 opacity-0 translate-y-3 transition-all duration-500";
+        row.innerHTML = `
+          <td class="py-3 px-4">${name}</td>
+          <td class="py-3 px-4"><span class="ai-comment block text-gray-300"></span></td>
+          <td class="py-3 px-4"><span class="px-3 py-1 rounded-full text-sm font-semibold ${badgeColor}">${suitability}</span></td>
+        `;
+        resultsBody.appendChild(row);
+
+        // Fade-in row
+        requestAnimationFrame(() => {
+          row.classList.remove("opacity-0", "translate-y-3");
+        });
+
+        // Typewriter effect for AI comments
+        const commentEl = row.querySelector(".ai-comment");
+        await typeWriterEffect(commentEl, comments, 12);
+      }
+
+      resultsDiv.classList.remove("hidden");
+    });
+  </script>
+</body>
+</html>
